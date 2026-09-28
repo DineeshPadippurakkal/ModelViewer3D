@@ -1,6 +1,21 @@
 package com.modelviewer3d.ui
 
 import android.util.Log
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import com.modelviewer3d.ui.theme.ViewerCyan
+import com.modelviewer3d.ui.theme.ViewerCard
+import com.modelviewer3d.ui.theme.ViewerControl
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -152,107 +167,131 @@ fun ModelContainer(
             .offset { IntOffset((offsetX * density).roundToInt(), (offsetY * density).roundToInt()) }
             .size(width.dp, height.dp)
             .testTag("model-${instance.id}"),
+        shape = RoundedCornerShape(9.dp),
+        color = ViewerCard,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
-        Column {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                IconButton(
-                    onClick = onInteraction,
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = if (instance.interactionMode) {
-                            MaterialTheme.colorScheme.secondaryContainer
-                        } else Color.Transparent
-                    ),
-                    modifier = Modifier.weight(1f).height(48.dp).semantics { selected = instance.interactionMode }
+        Box {
+            Column {
+                Column(
+                    modifier = Modifier.fillMaxWidth().height(52.dp).padding(top = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(painterResource(R.drawable.ic_interaction), contentDescription = "Interaction")
-                }
-                IconButton(
-                    onClick = onLabels,
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = if (instance.labelsVisible) {
-                            MaterialTheme.colorScheme.secondaryContainer
-                        } else Color.Transparent
-                    ),
-                    modifier = Modifier.weight(1f).height(48.dp).semantics { selected = instance.labelsVisible }
-                ) {
-                    Icon(painterResource(R.drawable.ic_labels), contentDescription = "Labels")
-                }
-                IconButton(
-                    onClick = onClose,
-                    modifier = Modifier.weight(1f).height(48.dp)
-                ) {
-                    Icon(painterResource(R.drawable.ic_close), contentDescription = "Close")
-                }
-            }
-            Box(
-                modifier = Modifier.weight(1f).fillMaxWidth().testTag("gesture-${instance.id}"),
-                contentAlignment = Alignment.Center
-            ) {
-                Scene(
-                    modifier = Modifier.fillMaxSize().semantics {
-                        if (modelNode != null) {
-                            contentDescription = "${instance.model.displayName} 3D model"
+                    Box(Modifier.size(32.dp, 4.dp).background(Color(0xFF3B494C), RoundedCornerShape(4.dp)))
+                    Row(Modifier.padding(top = 6.dp, start = 16.dp, end = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(instance.model.displayName, fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false))
+                        if (width >= 260f) {
+                            Surface(shape = RoundedCornerShape(20.dp),
+                                color = if (instance.interactionMode) Color(0xFF173C40) else ViewerControl) {
+                                Text(if (instance.interactionMode) "ORBIT MODE" else "MOVE MODE",
+                                    color = if (instance.interactionMode) ViewerCyan else Color(0xFFBAC9CC),
+                                    fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp, letterSpacing = 0.6.sp,
+                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp))
+                            }
                         }
-                    },
-                    engine = engine,
-                    renderer = renderer,
-                    modelLoader = modelLoader,
-                    materialLoader = materialLoader,
-                    environmentLoader = environmentLoader,
-                    environment = environment,
-                    scene = scene,
-                    cameraNode = cameraNode,
-                    childNodes = nodes,
-                    cameraManipulator = null,
-                    onGestureListener = null,
-                    // Consume native touches before SceneView's picking and default gesture handlers.
-                    onViewUpdated = { setOnTouchListener(interaction) }
-                )
-                Surface(
-                    modifier = Modifier.align(Alignment.TopStart),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
-                ) {
-                    Text(
-                        text = instance.model.displayName,
-                        style = MaterialTheme.typography.labelMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(4.dp)
-                    )
+                    }
                 }
-                if (!instance.interactionMode) {
-                    ModelContainerGestures(
-                        enabled = true,
-                        modifier = Modifier.fillMaxSize(),
-                        onDrag = { pan ->
-                            offsetX = (offsetX + pan.x / density).coerceIn(0.0f, canvasWidth - width)
-                            offsetY = (offsetY + pan.y / density).coerceIn(0.0f, canvasHeight - height)
-                        },
-                        onResize = { zoom ->
-                            if (zoom.isFinite() && zoom > 0.0f) {
-                                val minScale = max(minWidth / width, minHeight / height)
-                                val maxScale = min(canvasWidth / width, canvasHeight / height)
-                                val scale = zoom.coerceIn(minScale, maxScale)
-                                val newWidth = (width * scale).coerceIn(minWidth, canvasWidth)
-                                val newHeight = (height * scale).coerceIn(minHeight, canvasHeight)
-                                offsetX = (offsetX + (width - newWidth) / 2)
-                                    .coerceIn(0.0f, canvasWidth - newWidth)
-                                offsetY = (offsetY + (height - newHeight) / 2)
-                                    .coerceIn(0.0f, canvasHeight - newHeight)
-                                width = newWidth
-                                height = newHeight
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth().testTag("gesture-${instance.id}"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Scene(
+                        modifier = Modifier.fillMaxSize().semantics {
+                            if (modelNode != null) {
+                                contentDescription = "${instance.model.displayName} 3D model"
                             }
                         },
-                        onFinished = { onBoundsChanged(offsetX, offsetY, width, height) }
+                        engine = engine,
+                        renderer = renderer,
+                        modelLoader = modelLoader,
+                        materialLoader = materialLoader,
+                        environmentLoader = environmentLoader,
+                        environment = environment,
+                        scene = scene,
+                        cameraNode = cameraNode,
+                        childNodes = nodes,
+                        cameraManipulator = null,
+                        onGestureListener = null,
+                        // Consume native touches before SceneView's picking and default gesture handlers.
+                        onViewUpdated = { setOnTouchListener(interaction) }
                     )
+                    if (instance.labelsVisible && modelNode != null) {
+                        ModelLabel(instance.model.displayName, Modifier.align(Alignment.TopStart)
+                            .padding(16.dp))
+                    }
+                    if (!instance.interactionMode) {
+                        ModelContainerGestures(
+                            enabled = true,
+                            modifier = Modifier.fillMaxSize(),
+                            onDrag = { pan ->
+                                offsetX = (offsetX + pan.x / density).coerceIn(0.0f, canvasWidth - width)
+                                offsetY = (offsetY + pan.y / density).coerceIn(0.0f, canvasHeight - height)
+                            },
+                            onResize = { zoom ->
+                                if (zoom.isFinite() && zoom > 0.0f) {
+                                    val minScale = max(minWidth / width, minHeight / height)
+                                    val maxScale = min(canvasWidth / width, canvasHeight / height)
+                                    val scale = zoom.coerceIn(minScale, maxScale)
+                                    val newWidth = (width * scale).coerceIn(minWidth, canvasWidth)
+                                    val newHeight = (height * scale).coerceIn(minHeight, canvasHeight)
+                                    offsetX = (offsetX + (width - newWidth) / 2)
+                                        .coerceIn(0.0f, canvasWidth - newWidth)
+                                    offsetY = (offsetY + (height - newHeight) / 2)
+                                        .coerceIn(0.0f, canvasHeight - newHeight)
+                                    width = newWidth
+                                    height = newHeight
+                                }
+                            },
+                            onFinished = { onBoundsChanged(offsetX, offsetY, width, height) }
+                        )
+                    }
+                    if (isLoading) {
+                        CircularProgressIndicator()
+                    }
+                    error?.let { message ->
+                        Surface {
+                            Text(text = message, modifier = Modifier.padding(8.dp))
+                        }
+                    }
                 }
-                if (isLoading) {
-                    CircularProgressIndicator()
+                Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(if (width >= 260f) 8.dp else 0.dp)) {
+                    ModelControl(
+                        label = if (instance.interactionMode) "Orbit" else "Move",
+                        description = "Interaction", icon = R.drawable.ic_interaction,
+                        active = instance.interactionMode, showText = width >= 260f,
+                        onClick = onInteraction, modifier = Modifier.weight(1f))
+                    ModelControl(label = "Labels", description = "Labels", icon = R.drawable.ic_labels,
+                        active = instance.labelsVisible, showText = width >= 260f,
+                        onClick = onLabels, modifier = Modifier.weight(1f))
+                    if (width >= 260f) Spacer(Modifier.weight(0.7f))
+                    IconButton(onClick = onClose,
+                        modifier = Modifier.size(48.dp),
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = Color(0xFF401719), contentColor = Color(0xFFFFB4AB))) {
+                        Icon(painterResource(R.drawable.ic_close), contentDescription = "Close",
+                            modifier = Modifier.size(20.dp))
+                    }
                 }
-                error?.let { message ->
-                    Surface {
-                        Text(text = message, modifier = Modifier.padding(8.dp))
+            }
+            Canvas(Modifier.fillMaxSize()) {
+                val inset = 9.dp.toPx()
+                val length = 9.dp.toPx()
+                val bottom = size.height - 56.dp.toPx()
+                for (x in listOf(inset, size.width - inset)) {
+                    val directionX = if (x == inset) 1 else -1
+                    for (y in listOf(inset, bottom)) {
+                        val directionY = if (y == inset) 1 else -1
+                        drawLine(ViewerCyan.copy(alpha = 0.75f), Offset(x, y),
+                            Offset(x + length * directionX, y), 2.dp.toPx())
+                        drawLine(ViewerCyan.copy(alpha = 0.75f), Offset(x, y),
+                            Offset(x, y + length * directionY), 2.dp.toPx())
                     }
                 }
             }
@@ -267,6 +306,56 @@ fun ModelContainer(
                 node.destroy()
                 modelLoader.destroyModel(node.model)
             }
+        }
+    }
+}
+
+@Composable
+private fun ModelControl(
+    label: String, description: String, icon: Int, active: Boolean,
+    showText: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier
+) {
+    TextButton(onClick = onClick,
+        modifier = modifier.height(48.dp).semantics {
+            contentDescription = description
+            selected = active
+        },
+        shape = RoundedCornerShape(13.dp),
+        contentPadding = PaddingValues(horizontal = 8.dp),
+        colors = ButtonDefaults.textButtonColors(
+            containerColor = if (active) ViewerCyan else ViewerControl,
+            contentColor = if (active) Color(0xFF00363D) else ViewerCyan)) {
+        Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(18.dp))
+        if (showText) {
+            Spacer(Modifier.width(6.dp))
+            Text(label, fontFamily = FontFamily.Serif, fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun ModelLabel(name: String, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Surface(shape = RoundedCornerShape(20.dp), color = ViewerControl,
+            border = BorderStroke(1.dp, ViewerCyan.copy(alpha = 0.6f))) {
+            Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.size(6.dp).background(ViewerCyan, RoundedCornerShape(6.dp)))
+                Text(name, color = Color(0xFFC3F5FF), fontFamily = FontFamily.Serif,
+                    fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
+            }
+        }
+        Canvas(Modifier.size(90.dp, 54.dp)) {
+            val start = Offset(16.dp.toPx(), 0f)
+            val elbow = Offset(start.x, 18.dp.toPx())
+            val end = Offset(80.dp.toPx(), 46.dp.toPx())
+            val dash = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 2.dp.toPx()))
+            drawLine(ViewerCyan, start, elbow, 1.5.dp.toPx(), pathEffect = dash)
+            drawLine(ViewerCyan, elbow, end, 1.5.dp.toPx(), pathEffect = dash)
+            drawCircle(ViewerCyan, 3.dp.toPx(), end)
+            drawCircle(ViewerCyan.copy(alpha = 0.6f), 6.dp.toPx(), end, style = Stroke(1.dp.toPx()))
         }
     }
 }
